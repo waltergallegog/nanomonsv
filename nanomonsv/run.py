@@ -14,10 +14,9 @@ from .post_proc import *
 from .vcf_convert import *
 from .insert_classify import *
 from .utils import *
-from .logger import get_logger
+from .logger import get_logger as logger
 from .utils import *
 
-logger = get_logger(__name__)
 
 def parse_main(args):
 
@@ -37,8 +36,8 @@ def parse_main(args):
         os.makedirs(output_dir)
 
     ####################
-    parse_alignment_info(args.alignment_file, args.reference_fasta, 
-        args.output_prefix + ".tmp.deletion_info.txt", args.output_prefix + ".tmp.insertion_info.txt", 
+    parse_alignment_info(args.alignment_file, args.reference_fasta,
+        args.output_prefix + ".tmp.deletion_info.txt", args.output_prefix + ".tmp.insertion_info.txt",
         args.output_prefix + ".tmp.rearrangement_info.txt", args.output_prefix + ".tmp.bp_info.txt")
 
     ####################
@@ -59,11 +58,11 @@ def parse_main(args):
     hout = open(args.output_prefix + ".tmp.insertion.sorted.bed", 'w')
     subprocess.check_call(["sort", "-k1,1", "-k2,2n", "-k3,3n", "-k5,5n", args.output_prefix + ".tmp.insertion_info.txt"], stdout = hout)
     hout.close()
-    
-    hout = open(args.output_prefix + ".insertion.sorted.bed.gz", 'w') 
+
+    hout = open(args.output_prefix + ".insertion.sorted.bed.gz", 'w')
     subprocess.check_call(["bgzip", "-f", "-c", args.output_prefix + ".tmp.insertion.sorted.bed"], stdout = hout)
     hout.close()
-     
+
     subprocess.check_call(["tabix", "-p", "bed", args.output_prefix + ".insertion.sorted.bed.gz"])
     ####################
 
@@ -73,15 +72,15 @@ def parse_main(args):
     subprocess.check_call(["sort", "-k1,1", "-k2,2n", args.output_prefix + ".tmp.rearrangement_info.txt"], stdout = hout)
     hout.close()
 
-    extract_bedpe_junction(args.output_prefix + ".tmp.rearrangement_info.name_sorted.txt", 
+    extract_bedpe_junction(args.output_prefix + ".tmp.rearrangement_info.name_sorted.txt",
                            args.output_prefix + ".tmp.rearrangement.bedpe",
                            args.split_alignment_check_margin, args.split_alignment_check_margin, args.minimum_breakpoint_ambiguity)
 
     hout = open(args.output_prefix + ".tmp.rearrangement.sorted.bedpe", 'w')
-    subprocess.check_call(["sort", "-k1,1", "-k2,2n", "-k3,3n", "-k4,4", "-k5,5n", "-k6,6n", 
+    subprocess.check_call(["sort", "-k1,1", "-k2,2n", "-k3,3n", "-k4,4", "-k5,5n", "-k6,6n",
                            args.output_prefix + ".tmp.rearrangement.bedpe"], stdout = hout)
     hout.close()
-  
+
     hout = open(args.output_prefix + ".rearrangement.sorted.bedpe.gz", 'w')
     subprocess.check_call(["bgzip", "-f", "-c", args.output_prefix + ".tmp.rearrangement.sorted.bedpe"], stdout = hout)
     hout.close()
@@ -128,14 +127,14 @@ def call_slow_request(args, index):
         ret_code = 0
     except Exception as e:
         err_message = str(e)
-    
-    logger.info("End Process (%d): ret_code=%d" % (index, ret_code))
+
+    logger().info("End Process (%d): ret_code=%d" % (index, ret_code))
     return (ret_code, err_message)
 
 
 def call_slow_request_main(args, index):
 
-    logger.info("Generate consensus sequences (%d)" % (index))
+    logger().info("Generate consensus sequences (%d)" % (index))
     generate_consensus(args.tumor_prefix + ".support_read_seq.%d.txt" % (index),
         args.tumor_prefix + ".consensus_seq.%d.txt" % (index),
         use_racon = args.use_racon, debug = args.debug)
@@ -143,7 +142,7 @@ def call_slow_request_main(args, index):
         args.tumor_prefix + ".consensus_seq.sbnd.%d.txt" % (index),
         use_racon = args.use_racon, debug = args.debug, max_memory_minimap2 = args.max_memory_minimap2)
 
-    logger.info("Locating single-base resolution break points for candidate SVs (%d)" % (index))
+    logger().info("Locating single-base resolution break points for candidate SVs (%d)" % (index))
     locate_bp(args.tumor_prefix + ".consensus_seq.%d.txt" % (index),
         args.tumor_prefix + ".refined_bp.%d.txt" % (index),
         args.reference_fasta, args.sw_jump_params, args.debug)
@@ -151,34 +150,34 @@ def call_slow_request_main(args, index):
         args.tumor_prefix + ".refined_bp.sbnd.%d.txt" % (index),
         args.reference_fasta, args.debug)
 
-    logger.info("Counting the number of supporting read for the tumor by realignment of SV candidate segments (%d)" % (index))
+    logger().info("Counting the number of supporting read for the tumor by realignment of SV candidate segments (%d)" % (index))
     count_sread_by_alignment(
-        args.tumor_prefix + ".refined_bp.%d.txt" % (index), 
-        args.tumor_bam, 
-        args.tumor_prefix + ".realignment.tumor.sread_count.%d.txt" % (index), 
-        args.tumor_prefix + ".realignment.tumor.sread_info.%d.txt" % (index), 
+        args.tumor_prefix + ".refined_bp.%d.txt" % (index),
+        args.tumor_bam,
+        args.tumor_prefix + ".realignment.tumor.sread_count.%d.txt" % (index),
+        args.tumor_prefix + ".realignment.tumor.sread_info.%d.txt" % (index),
         args.reference_fasta,
-        sbnd_file = args.tumor_prefix + ".refined_bp.sbnd.%d.txt" % (index), 
+        sbnd_file = args.tumor_prefix + ".refined_bp.sbnd.%d.txt" % (index),
         output_count_file_sbnd = args.tumor_prefix + ".realignment.tumor.sread_count.sbnd.%d.txt" % (index),
         output_alignment_info_file_sbnd = args.tumor_prefix + ".realignment.tumor.sread_info.sbnd.%d.txt" % (index),
-        check_read_max_num = args.check_read_max_num, 
-        var_read_min_mapq = args.var_read_min_mapq, score_ratio_thres = args.validation_score_ratio_thres, use_ssw_lib = False, 
+        check_read_max_num = args.check_read_max_num,
+        var_read_min_mapq = args.var_read_min_mapq, score_ratio_thres = args.validation_score_ratio_thres, use_ssw_lib = False,
         sort_option = args.sort_option, debug = args.debug
     )
-     
+
     if args.control_bam is not None:
-        logger.info("Counting the number of supporting read for the control by realignment of SV candidate segments (%d)" % (index))
+        logger().info("Counting the number of supporting read for the control by realignment of SV candidate segments (%d)" % (index))
         count_sread_by_alignment(
-            args.tumor_prefix + ".refined_bp.%d.txt" % (index), 
-            args.control_bam, 
-            args.tumor_prefix + ".realignment.control.sread_count.%d.txt" % (index), 
-            args.tumor_prefix + ".realignment.control.sread_info.%d.txt" % (index), 
+            args.tumor_prefix + ".refined_bp.%d.txt" % (index),
+            args.control_bam,
+            args.tumor_prefix + ".realignment.control.sread_count.%d.txt" % (index),
+            args.tumor_prefix + ".realignment.control.sread_info.%d.txt" % (index),
             args.reference_fasta,
-            sbnd_file = args.tumor_prefix + ".refined_bp.sbnd.%d.txt" % (index), 
+            sbnd_file = args.tumor_prefix + ".refined_bp.sbnd.%d.txt" % (index),
             output_count_file_sbnd = args.tumor_prefix + ".realignment.control.sread_count.sbnd.%d.txt" % (index),
             output_alignment_info_file_sbnd = args.tumor_prefix + ".realignment.control.sread_info.sbnd.%d.txt" % (index),
-            check_read_max_num = args.check_read_max_num, 
-            var_read_min_mapq = args.var_read_min_mapq, score_ratio_thres = args.validation_score_ratio_thres, use_ssw_lib = False, 
+            check_read_max_num = args.check_read_max_num,
+            var_read_min_mapq = args.var_read_min_mapq, score_ratio_thres = args.validation_score_ratio_thres, use_ssw_lib = False,
             sort_option = args.sort_option, debug = args.debug
         )
 
@@ -186,32 +185,32 @@ def call_slow_request_main(args, index):
 def get_main(args):
 
     # check if the executables exist
-    if args.use_racon: 
+    if args.use_racon:
         is_tool("racon")
     else:
         is_tool("mafft")
     if False: libssw_check()
 
-    if args.single_bnd: 
+    if args.single_bnd:
         is_tool("minimap2")
         if not args.use_racon:
-            logger.error("single_bnd option has to be used with use_racon option")
+            logger().error("single_bnd option has to be used with use_racon option")
             sys.exit(1)
 
     parallel_num = 1
     # if args.threads > 1:
     #     if args.processes > 1:
-    #         logger.error("--threads option sholud not be used with processes option")
+    #         logger().error("--threads option sholud not be used with processes option")
     #         sys.exit(1)
-    #     logger.warning("--threads option is not recommended. Please consider using --processes option")
+    #     logger().warning("--threads option is not recommended. Please consider using --processes option")
     #     parallel_num = args.threads
     # elif args.processes > 1:
     if args.processes > 1:
         parallel_num = args.processes
 
-    # parameter preset 
+    # parameter preset
     if sum([int(x == True) for x in [args.qv10, args.qv15, args.qv20, args.qv25]]) > 1:
-        logger.error("Parameter preset (qv10, qv15, qv20, qv25) should be set only once")
+        logger().error("Parameter preset (qv10, qv15, qv20, qv25) should be set only once")
         sys.exit(1)
 
     if args.qv10:
@@ -220,7 +219,7 @@ def get_main(args):
     elif args.qv15:
         args.validation_score_ratio_thres = 1.4
         args.sw_jump_params = [1, 3, 3, 2]
-    elif args.qv20: 
+    elif args.qv20:
         args.validation_score_ratio_thres = 1.6
         args.sw_jump_params = [1, 4, 4, 2]
     elif args.qv25:
@@ -231,12 +230,12 @@ def get_main(args):
     is_exists_bam(args.tumor_bam)
     is_exists(args.reference_fasta)
     if args.control_bam is not None: is_exists_bam(args.control_bam)
-   
+
     # check parsed files existences
     is_exists_parsed_files(args.tumor_prefix)
     if args.control_prefix is not None: is_exists_parsed_files(args.control_prefix)
     if args.control_panel_prefix is not None: is_exists_parsed_files(args.control_panel_prefix)
- 
+
     # BAM format check
     bam_cram_format_check(args.tumor_bam, args.reference_fasta)
     fasta_format_check(args.reference_fasta)
@@ -246,7 +245,7 @@ def get_main(args):
     control_deletion_bed = None
     control_insertion_bed = None
     control_bp_bed = None
-    if args.control_prefix is not None: 
+    if args.control_prefix is not None:
         control_rearrangement_bedpe = args.control_prefix + ".rearrangement.sorted.bedpe.gz"
         control_deletion_bed = args.control_prefix + ".deletion.sorted.bed.gz"
         control_insertion_bed = args.control_prefix + ".insertion.sorted.bed.gz"
@@ -269,41 +268,41 @@ def get_main(args):
     if args.use_racon:
         bp_bed = args.tumor_prefix + ".bp_info.sorted.bed.gz"
     ####################
-    logger.info("Clustering rearrangement type supporting reads for putative SVs")
-    cluster_supporting_reads(args.tumor_prefix + ".rearrangement.sorted.bedpe.gz", 
+    logger().info("Clustering rearrangement type supporting reads for putative SVs")
+    cluster_supporting_reads(args.tumor_prefix + ".rearrangement.sorted.bedpe.gz",
         args.tumor_prefix + ".rearrangement.sorted.clustered.bedpe",
         "rearrangement", control_junction_bedpe = control_rearrangement_bedpe,
         control_panel_junction_bedpe = control_panel_rearrangement_bedpe,
-        read_num_thres = args.min_tumor_variant_read_num, cluster_margin_size = args.cluster_margin_size, 
+        read_num_thres = args.min_tumor_variant_read_num, cluster_margin_size = args.cluster_margin_size,
         median_mapQ_thres = args.median_mapQ_thres, max_overhang_size_thres = args.max_overhang_size_thres,
-        maximum_local_variant_num = 1000, max_control_read_num = args.max_control_variant_read_num, 
+        maximum_local_variant_num = 1000, max_control_read_num = args.max_control_variant_read_num,
         max_panel_read_num = args.max_panel_read_num, max_panel_sample_num = args.max_panel_sample_num, debug = args.debug)
 
-    logger.info("Clustering insertion type supporting reads for putative SVs")
+    logger().info("Clustering insertion type supporting reads for putative SVs")
     cluster_supporting_reads(args.tumor_prefix + ".insertion.sorted.bed.gz",
         args.tumor_prefix + ".insertion.sorted.clustered.bedpe",
-        "insertion", control_junction_bedpe = control_insertion_bed, 
+        "insertion", control_junction_bedpe = control_insertion_bed,
         control_panel_junction_bedpe = control_panel_insertion_bed, bp_bed = bp_bed,
-        read_num_thres = args.min_tumor_variant_read_num, cluster_margin_size = args.cluster_margin_size, 
+        read_num_thres = args.min_tumor_variant_read_num, cluster_margin_size = args.cluster_margin_size,
         median_mapQ_thres = args.median_mapQ_thres, max_overhang_size_thres = args.max_overhang_size_thres,
-        min_indel_size = int(0.7 * args.min_indel_size), max_control_read_num = args.max_control_variant_read_num, 
+        min_indel_size = int(0.7 * args.min_indel_size), max_control_read_num = args.max_control_variant_read_num,
         max_panel_read_num = args.max_panel_read_num, max_panel_sample_num = args.max_panel_sample_num, debug = args.debug)
 
-    logger.info("Clustering deletion type supporting reads for putative SVs")
+    logger().info("Clustering deletion type supporting reads for putative SVs")
     cluster_supporting_reads(args.tumor_prefix + ".deletion.sorted.bed.gz",
         args.tumor_prefix + ".deletion.sorted.clustered.bedpe",
-        "deletion", control_junction_bedpe = control_deletion_bed, 
+        "deletion", control_junction_bedpe = control_deletion_bed,
         control_panel_junction_bedpe = control_panel_deletion_bed, bp_bed = bp_bed,
-        read_num_thres = args.min_tumor_variant_read_num, cluster_margin_size = args.cluster_margin_size, 
+        read_num_thres = args.min_tumor_variant_read_num, cluster_margin_size = args.cluster_margin_size,
         median_mapQ_thres = args.median_mapQ_thres, max_overhang_size_thres = args.max_overhang_size_thres,
-        min_indel_size = int(0.7 * args.min_indel_size), max_control_read_num = args.max_control_variant_read_num, 
+        min_indel_size = int(0.7 * args.min_indel_size), max_control_read_num = args.max_control_variant_read_num,
         max_panel_read_num = args.max_panel_read_num, max_panel_sample_num = args.max_panel_sample_num, debug = args.debug)
 
     if args.single_bnd:
-        logger.info("Clustering single breakend type supporting reads for putative SVs")
+        logger().info("Clustering single breakend type supporting reads for putative SVs")
         cluster_supporting_reads_sbnd(args.tumor_prefix + ".bp_info.sorted.bed.gz",
             args.tumor_prefix + ".singlebreakend.sorted.clustered.bed", control_bed = control_bp_bed,
-            control_panel_bed = control_panel_bp_bed, 
+            control_panel_bed = control_panel_bp_bed,
             read_num_thres = args.min_tumor_variant_read_num, cluster_margin_size = args.cluster_margin_size,
             median_mapQ_thres = args.median_mapQ_thres, max_control_read_num = args.max_control_variant_read_num,
             max_panel_read_num = args.max_panel_read_num, max_panel_sample_num = args.max_panel_sample_num, debug = args.debug)
@@ -311,15 +310,15 @@ def get_main(args):
         with open(args.tumor_prefix + ".singlebreakend.sorted.clustered.bed", 'w'):
             pass
 
-    logger.info("Gathering sequences of supporting reads")
+    logger().info("Gathering sequences of supporting reads")
     gather_support_read_seq(args.tumor_prefix + ".rearrangement.sorted.clustered.bedpe",
         args.tumor_prefix + ".insertion.sorted.clustered.bedpe",
         args.tumor_prefix + ".deletion.sorted.clustered.bedpe",
         args.tumor_prefix + ".support_read_seq.txt",
         args.tumor_bam, args.reference_fasta, single_breakend_file = args.tumor_prefix + ".singlebreakend.sorted.clustered.bed",
         output_file_sbind = args.tumor_prefix + ".support_read_seq.sbnd.txt" )
-    
-    logger.info("Preparation for parallel execution")
+
+    logger().info("Preparation for parallel execution")
     fw_support_read_seqs = []
     fw_support_read_seq_sbnds = []
     for i in range(parallel_num):
@@ -338,7 +337,7 @@ def get_main(args):
                 if last_tpos == parallel_num:
                     last_tpos = 0
             fw_support_read_seqs[last_tpos].write(row)
-    
+
     last_key = ""
     last_tpos = -1
     with open(args.tumor_prefix + ".support_read_seq.sbnd.txt") as hin:
@@ -376,7 +375,7 @@ def get_main(args):
                     if ret_code != 0:
                         raise Exception(err_message)
 
-    logger.info("Merge parallel execution")
+    logger().info("Merge parallel execution")
 
     """
     def merge_txt(prefix):
@@ -421,14 +420,14 @@ def get_main(args):
                 os.remove(args.tumor_prefix + ".realignment.control.sread_info.%d.txt" % (i))
                 os.remove(args.tumor_prefix + ".realignment.control.sread_info.sbnd.%d.txt" % (i))
 
-    logger.info("Final processing") 
+    logger().info("Final processing")
     control_sread_count_file = args.tumor_prefix + ".realignment.control.sread_count.txt" if args.control_bam is not None else None
     integrate_realignment_result(args.tumor_prefix + ".realignment.tumor.sread_count.txt", control_sread_count_file,
         args.tumor_prefix + ".nanomonsv.result.txt", args.reference_fasta, min_indel_size = args.min_indel_size,
-        min_tumor_variant_read_num = args.min_tumor_variant_read_num, min_tumor_VAF = args.min_tumor_VAF, 
+        min_tumor_variant_read_num = args.min_tumor_variant_read_num, min_tumor_VAF = args.min_tumor_VAF,
         max_control_variant_read_num = args.max_control_variant_read_num, max_control_VAF = args.max_control_VAF)
 
-    genomesv2vcf_convert(args.tumor_prefix + ".nanomonsv.result.txt", args.tumor_prefix + ".nanomonsv.result.vcf", 
+    genomesv2vcf_convert(args.tumor_prefix + ".nanomonsv.result.txt", args.tumor_prefix + ".nanomonsv.result.vcf",
         args.reference_fasta)
 
     proc_sread_info_file(args.tumor_prefix + ".realignment.tumor.sread_info.txt",
@@ -439,7 +438,7 @@ def get_main(args):
     integrate_realignment_result_sbnd(args.tumor_prefix + ".realignment.tumor.sread_count.sbnd.txt", control_sread_count_file_sbnd,
         args.tumor_prefix + ".nanomonsv.sbnd.result.txt",
         args.tumor_prefix + ".nanomonsv.result.txt", args.tumor_prefix + ".refined_bp.sbnd.txt")
- 
+
     if not args.debug:
         os.remove(args.tumor_prefix + ".rearrangement.sorted.clustered.bedpe")
         os.remove(args.tumor_prefix + ".insertion.sorted.clustered.bedpe")
@@ -453,7 +452,7 @@ def get_main(args):
         os.remove(args.tumor_prefix + ".refined_bp.sbnd.txt")
         os.remove(args.tumor_prefix + ".realignment.tumor.sread_count.txt")
         os.remove(args.tumor_prefix + ".realignment.tumor.sread_count.sbnd.txt")
-        os.remove(args.tumor_prefix + ".realignment.tumor.sread_info.txt")  
+        os.remove(args.tumor_prefix + ".realignment.tumor.sread_info.txt")
         os.remove(args.tumor_prefix + ".realignment.tumor.sread_info.sbnd.txt")
         if args.control_bam is not None:
             os.remove(args.tumor_prefix + ".realignment.control.sread_count.txt")
@@ -462,24 +461,24 @@ def get_main(args):
             os.remove(args.tumor_prefix + ".realignment.control.sread_info.sbnd.txt")
 
         if not args.single_bnd:
-            os.remove(args.tumor_prefix + ".nanomonsv.sbnd.result.txt")   
+            os.remove(args.tumor_prefix + ".nanomonsv.sbnd.result.txt")
 
 
 def validate_main(args):
-   
+
     # executable check
     # if False: libssw_check()
 
-    # parameter preset 
+    # parameter preset
     if sum([int(x == True) for x in [args.qv10, args.qv15, args.qv20, args.qv25]]) > 1:
-        logger.error("Parameter preset (qv10, qv15, qv20, qv25) should be set only once")
+        logger().error("Parameter preset (qv10, qv15, qv20, qv25) should be set only once")
         sys.exit(1)
 
     if args.qv10:
         args.validation_score_ratio_thres = 1.2
     elif args.qv15:
         args.validation_score_ratio_thres = 1.4
-    elif args.qv20: 
+    elif args.qv20:
         args.validation_score_ratio_thres = 1.6
     elif args.qv25:
         args.validation_score_ratio_thres = 1.8
@@ -494,21 +493,21 @@ def validate_main(args):
     fasta_format_check(args.reference_fasta)
     if args.control_bam is not None: bam_cram_format_check(args.control_bam, args.reference_fasta)
 
-    
-    logger.info("Counting the number of supporting read for the tumor by realignment of SV candidate segments")
+
+    logger().info("Counting the number of supporting read for the tumor by realignment of SV candidate segments")
     count_sread_by_alignment(args.sv_list_file, args.tumor_bam,
         args.output + ".realignment.tumor.sread_count.txt", args.output + ".realignment.tumor.sread_info.txt",
-        args.reference_fasta, var_read_min_mapq = args.var_read_min_mapq, use_ssw_lib = False, 
+        args.reference_fasta, var_read_min_mapq = args.var_read_min_mapq, use_ssw_lib = False,
         sort_option = args.sort_option, debug = args.debug)
 
     if args.control_bam is not None:
-        logger.info("Counting the number of supporting read for the control by realignment of SV candidate segments")
+        logger().info("Counting the number of supporting read for the control by realignment of SV candidate segments")
         count_sread_by_alignment(args.sv_list_file, args.control_bam,
             args.output + ".realignment.control.sread_count.txt", args.output + ".realignment.control.sread_info.txt",
-            args.reference_fasta, var_read_min_mapq = args.var_read_min_mapq, use_ssw_lib = False, 
+            args.reference_fasta, var_read_min_mapq = args.var_read_min_mapq, use_ssw_lib = False,
             sort_option = args.sort_option, debug = args.debug)
 
-    logger.info("Final processing")
+    logger().info("Final processing")
     control_sread_count_file = args.output + ".realignment.control.sread_count.txt" if args.control_bam is not None else None
     integrate_realignment_result(args.output + ".realignment.tumor.sread_count.txt", control_sread_count_file, args.output,
         args.reference_fasta, min_indel_size = 0, min_tumor_variant_read_num = 0, min_tumor_VAF = 0,
@@ -520,7 +519,7 @@ def validate_main(args):
         os.remove(args.output + ".realignment.control.sread_count.txt")
         os.remove(args.output + ".realignment.control.sread_info.txt")
     ####################
-    
+
 
 def insert_classify_main(args):
 
@@ -534,7 +533,7 @@ def insert_classify_main(args):
     is_tool("RepeatMasker")
 
     make_fasta_file(args.sv_list_file, args.output_file + ".tmp.fasta", args.output_file + ".tmp.seq_id.txt")
-   
+
     ##########
     # processed pseudo gene
     annot_utils.exon.make_exon_info(args.output_file + ".tmp.exon.bed.gz", "gencode", args.genome_id, args.grc, True)
@@ -543,13 +542,13 @@ def insert_classify_main(args):
         subprocess.check_call(["minimap2", "-ax", "splice", args.reference_fasta, args.output_file + ".tmp.fasta"], stdout = hout)
 
     sam2bed_split(args.output_file + ".tmp.minimap2.sam", args.output_file + ".tmp.minimap2.filt.bed")
-    
+
     with open(args.output_file + ".tmp.minimap2.filt.exon.bed", 'w') as hout:
-        subprocess.check_call(["bedtools", "intersect", "-a", args.output_file + ".tmp.minimap2.filt.bed", 
+        subprocess.check_call(["bedtools", "intersect", "-a", args.output_file + ".tmp.minimap2.filt.bed",
                                "-b", args.output_file + ".tmp.exon.bed.gz", "-wo"], stdout = hout)
- 
-    pp_proc_filt_exon(args.output_file + ".tmp.minimap2.filt.exon.bed", 
-                      args.output_file + ".tmp.seq_id.txt", 
+
+    pp_proc_filt_exon(args.output_file + ".tmp.minimap2.filt.exon.bed",
+                      args.output_file + ".tmp.seq_id.txt",
                       args.output_file + ".tmp.ppseudo.txt")
     ##########
 
@@ -562,7 +561,7 @@ def insert_classify_main(args):
 
     summarize_rmsk(tmpdir_rmsk + '/' + os.path.basename(args.output_file + ".tmp.fasta") + ".out", args.output_file + ".tmp.rmsk.txt")
 
-    check_tsd_polyAT(args.output_file + ".tmp.fasta", args.output_file + ".tmp.seq_id.txt", 
+    check_tsd_polyAT(args.output_file + ".tmp.fasta", args.output_file + ".tmp.seq_id.txt",
                      args.reference_fasta, args.output_file + ".tmp.tsd.polyAT.txt")
 
     shutil.rmtree(tmpdir_rmsk)
@@ -576,8 +575,8 @@ def insert_classify_main(args):
 
     summarize_bwa_alignment2(args.output_file + ".tmp.bwa.sam", args.output_file + ".tmp.seq_id.txt", args.output_file + ".tmp.alignment.txt")
 
-    organize_info(args.output_file + ".tmp.rmsk.txt", args.output_file + ".tmp.alignment.txt", 
-                 args.output_file + ".tmp.tsd.polyAT.txt", args.output_file + ".tmp.seq_id.txt", 
+    organize_info(args.output_file + ".tmp.rmsk.txt", args.output_file + ".tmp.alignment.txt",
+                 args.output_file + ".tmp.tsd.polyAT.txt", args.output_file + ".tmp.seq_id.txt",
                  args.output_file + ".tmp.org.txt", args.genome_id)
 
     annotate_sv_file(args.sv_list_file, args.output_file + ".tmp.org.txt", args.output_file + ".tmp.ppseudo.txt",
@@ -599,3 +598,69 @@ def insert_classify_main(args):
         os.remove(args.output_file + ".tmp.org.txt")
 
 
+def insert_refine_main(args) -> None:
+
+    logger().info("Refine insertion candidates")
+    logger().info(args)
+
+    # check if the executables exist
+    if args.use_racon:
+        is_tool("racon")
+    else:
+        is_tool("mafft")
+
+    parallel_num: int = 1
+    if args.processes > 1:
+        parallel_num = args.processes
+
+    # parameter preset
+    if sum([int(x == True) for \
+            x in [args.qv10, args.qv15, args.qv20, args.qv25]]) > 1:
+        logger().error("Parameter preset (qv10, qv15, qv20, qv25) "
+                     "should be set only once")
+        sys.exit(1)
+
+    if args.qv10:
+        args.validation_score_ratio_thres = 1.2
+        args.sw_jump_params = [1, 2, 2, 2]
+    elif args.qv15:
+        args.validation_score_ratio_thres = 1.4
+        args.sw_jump_params = [1, 3, 3, 2]
+    elif args.qv20:
+        args.validation_score_ratio_thres = 1.6
+        args.sw_jump_params = [1, 4, 4, 2]
+    elif args.qv25:
+        args.validation_score_ratio_thres = 1.8
+        args.sw_jump_params = [1, 6, 6, 2]
+
+    # check existences
+    is_exists_bam(args.bam)
+    is_exists(args.reference_fasta)
+
+    # BAM format check
+    bam_cram_format_check(args.bam, args.reference_fasta)
+    fasta_format_check(args.reference_fasta)
+
+    logger().info("Gathering sequences of supporting reads")
+    gather_support_read_seq(
+        rearrangement_file=os.devnull,
+        insertion_file=args.clustered_ins_file,
+        deletion_file=os.devnull,
+        output_file=os.path.join(args.out_folder, "support_read_seq.txt"),
+        tumor_alignment_file=args.bam,
+        reference_fasta=args.reference_fasta,
+    )
+
+    logger().info("Generate consensus sequences")
+    generate_consensus(
+        os.path.join(args.out_folder, "support_read_seq.txt"),
+        os.path.join(args.out_folder, "consensus_seq.txt"),
+        use_racon = args.use_racon, debug = args.debug)
+
+    logger().info("Locating single-base resolution break points")
+    locate_bp(
+        os.path.join(args.out_folder, "consensus_seq.txt"),
+        os.path.join(args.out_folder, "refined_bp.txt"),
+        args.reference_fasta, args.sw_jump_params, args.debug)
+
+    logger().info("Done!")

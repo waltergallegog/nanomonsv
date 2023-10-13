@@ -3,15 +3,15 @@
 import pysam
 import sys, math, re
 
-from .logger import get_logger
-logger = get_logger(__name__)
+from .logger import get_logger as logger
+
 
 def get_seq(reference, chr, start, end):
 
     seq = pysam.FastaFile(reference).fetch(chr, start - 1, end)
 
     if re.search(r'[^ACGTUWSMKRYBDHVNacgtuwsmkrybdhvn]', seq) is not None:
-        logger.error("The return value in get_seq function includes non-nucleotide characters: " % seq)
+        logger().error("The return value in get_seq function includes non-nucleotide characters: " % seq)
         sys.exit(1)
 
     return seq
@@ -23,5 +23,3 @@ def reverse_complement(seq):
                   'B': 'V', 'V': 'B', 'D': 'H', 'H': 'D', 'N': 'N'}
 
     return("".join(complement.get(base, base) for base in reversed(seq)))
-
-
